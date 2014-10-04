@@ -18,7 +18,9 @@
     <form action="">
       <input id="m" autocomplete="off" /><button>Send</button>
     </form>
+    <input id="file" type="file" />
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/socket.io-stream.js"></script>
     <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       var socket = io();
@@ -29,6 +31,32 @@
       });
       socket.on('chat message', function(msg){
         $('#messages').append($('<li>').text(msg));
+      });
+
+      // file upload
+      $('#file').change(function(e) {
+        // console.log('file change', e);
+        var file = e.target.files[0];
+        var stream = ss.createStream();
+
+        // upload a file to the server.
+        ss(socket).emit('file', stream, {size: file.size, name: file.name, type: file.type});
+        var blobStream = ss.createBlobReadStream(file);
+        var size = 0;
+        blobStream.on('data', function(chunk) {
+          size += chunk.length;
+          // console.log(Math.floor(size / file.size * 100) + '%');
+          $('#messages').append($('<li>').text('檔案上傳中... ' + Math.floor(size / file.size * 100) + '%'));
+        });
+        blobStream.pipe(stream);
+        $('#file').val('');
+        $('#messages').append($('<li>').text('檔案上傳中...'));
+      });
+      socket.on('new file', function (data) {
+          $('#messages').append(
+            $('<li>').text('點擊下載').append(
+              $('<a>').text(data.name + ' (size: ' + data.size + ')').attr('href', data.url ).attr('target', '_blank' )
+          ));
       });
     </script>
   </body>
